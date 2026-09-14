@@ -10,13 +10,14 @@ export interface ScheduleItem {
   description: string;
   highlight?: string;
   tags: string[];
-  defaultPhotos: [string, string];
-  defaultCaptions: [string, string];
+  defaultPhotos: string[];
+  defaultCaptions: string[];
+  pageCount: number; // 2 pages (4 photos) or 4 pages (8 photos for K-League)
 }
 
 export interface UserPhotoEntry {
   scheduleId: string;
-  photoIndex: 0 | 1;
+  photoIndex: number;
   imageUrl: string;
   customCaption?: string;
   updatedAt: number;

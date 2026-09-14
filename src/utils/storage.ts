@@ -42,7 +42,7 @@ export interface StoredPhoto {
 
 export async function saveUserPhoto(
   scheduleId: string,
-  photoIndex: 0 | 1,
+  photoIndex: number,
   imageUrl: string,
   caption?: string
 ): Promise<void> {
@@ -105,7 +105,7 @@ export async function getAllUserPhotos(): Promise<
 
 export async function removeUserPhoto(
   scheduleId: string,
-  photoIndex: 0 | 1
+  photoIndex: number
 ): Promise<void> {
   try {
     const db = await openDB();

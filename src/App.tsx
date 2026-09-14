@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SCHEDULES } from './data/schedules';
 import { GuestbookNote } from './types';
 import { 
@@ -17,6 +17,8 @@ import { CoverPage } from './components/CoverPage';
 import { AlbumPage } from './components/AlbumPage';
 import { BackCoverPage } from './components/BackCoverPage';
 import { BatchUploadModal } from './components/BatchUploadModal';
+import { FallingPetals } from './components/FallingPetals';
+import embeddedData from './data/embeddedPhotos.json';
 
 const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80';
 
@@ -26,15 +28,15 @@ const INITIAL_GUESTBOOK_NOTES: GuestbookNote[] = [
     author: '담임선생님',
     role: '선생님',
     message: '1박 2일 동안 서로 손잡고 배려하며 안전하게 일정을 잘 마쳐준 온정초 친구들! 선생님은 너희가 정말 자랑스럽단다 ❤️',
-    date: '2026.09.05',
+    date: '9월 9일(수)',
     color: 'yellow',
   },
   {
     id: 'note-parent',
     author: '민우 어머니',
     role: '학부모',
-    message: '아이들이 즐거워하는 사진들을 보니 부모로서 마음이 벅차오르네요. 정성껏 보살펴주신 선생님들께 진심으로 감사드립니다!',
-    date: '2026.09.05',
+    message: '아이들이 환하게 웃는 사진들을 보니 마음이 뭉클하네요. 정성껏 보살펴주신 선생님들께 깊이 감사드립니다!',
+    date: '9월 9일(수)',
     color: 'pink',
   },
   {
@@ -42,7 +44,7 @@ const INITIAL_GUESTBOOK_NOTES: GuestbookNote[] = [
     author: '서연',
     role: '학생',
     message: 'KTX 진짜 시원하게 빨랐고, 키자니아에서 직접 번 키조로 저축했던 게 평생 기억에 남을 것 같아요! 온정초 친구들 최고~',
-    date: '2026.09.05',
+    date: '9월 9일(수)',
     color: 'sky',
   },
 ];
@@ -51,16 +53,23 @@ export default function App() {
   // 3-page state (1: 앨범 표지, 2: 추억 앨범 본문, 3: 앨범 뒷장)
   const [currentPage, setCurrentPage] = useState<1 | 2 | 3>(1);
 
-  // Cover image
-  const [coverImage, setCoverImage] = useState<string>(DEFAULT_COVER_IMAGE);
+  // Cover image (fallback to embeddedPhotos.json, then DEFAULT_COVER_IMAGE)
+  const [coverImage, setCoverImage] = useState<string>(
+    (embeddedData as any).coverPhoto || DEFAULT_COVER_IMAGE
+  );
 
-  // User attached photos: { [scheduleId]: { [photoIndex]: { imageUrl, caption } } }
+  // User attached photos: baseline from embeddedPhotos.json for permanent bundle
   const [userPhotos, setUserPhotos] = useState<
     Record<string, { [index: number]: { imageUrl: string; caption?: string } }>
-  >({});
+  >(((embeddedData as any).photos as any) || {});
 
   // Guestbook notes for page 3
-  const [guestNotes, setGuestNotes] = useState<GuestbookNote[]>(INITIAL_GUESTBOOK_NOTES);
+  const [guestNotes, setGuestNotes] = useState<GuestbookNote[]>(
+    ((embeddedData as any).guestNotes as any) || INITIAL_GUESTBOOK_NOTES
+  );
+
+  // Falling Petals effect state (defaults to true)
+  const [petalsEnabled, setPetalsEnabled] = useState(true);
 
   // Piano background music state
   const [isPlayingBgm, setIsPlayingBgm] = useState(false);
@@ -108,27 +117,44 @@ export default function App() {
     pianoBgm.setVolume(val);
   }, []);
 
-  const handleStartBgmIfNeeded = useCallback(() => {
-    if (!pianoBgm.getIsPlaying()) {
-      pianoBgm.start();
-      const track = pianoBgm.getCurrentTrack();
-      showToast(`🎵 피아노 연주 중: ${track.title}`);
-    }
-  }, [showToast]);
-
-  // Load persistent data from IndexedDB on startup
+  // Load persistent data from IndexedDB on startup and merge with embeddedPhotos
   useEffect(() => {
     async function loadData() {
       try {
         const storedCover = await getCoverPhoto();
-        if (storedCover) setCoverImage(storedCover);
+        if (storedCover) {
+          setCoverImage(storedCover);
+        } else if ((embeddedData as any).coverPhoto) {
+          setCoverImage((embeddedData as any).coverPhoto);
+        }
 
         const storedPhotos = await getAllUserPhotos();
-        setUserPhotos(storedPhotos);
+        const embedded = (((embeddedData as any).photos as any) || {}) as Record<
+          string,
+          { [index: number]: { imageUrl: string; caption?: string } }
+        >;
+
+        const merged: Record<
+          string,
+          { [index: number]: { imageUrl: string; caption?: string } }
+        > = { ...embedded };
+
+        for (const [schedId, slots] of Object.entries(storedPhotos)) {
+          merged[schedId] = {
+            ...(merged[schedId] || {}),
+            ...slots,
+          };
+        }
+        setUserPhotos(merged);
 
         const savedNotes = await getSavedGuestbookNotes();
         if (savedNotes && savedNotes.length > 0) {
           setGuestNotes(savedNotes);
+        } else if (
+          (embeddedData as any).guestNotes &&
+          (embeddedData as any).guestNotes.length > 0
+        ) {
+          setGuestNotes((embeddedData as any).guestNotes);
         }
       } catch (err) {
         console.warn('Could not read from IndexedDB, using defaults:', err);
@@ -137,10 +163,9 @@ export default function App() {
     loadData();
   }, []);
 
-  // Keyboard navigation listener (Specific keys to flip pages: Space, 1, 2, 3, Arrows, PageUp/PageDown)
+  // Keyboard navigation listener (Space, 1, 2, 3, Arrows, PageUp/PageDown, M)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Do not trigger if typing in an input or textarea
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
@@ -173,7 +198,7 @@ export default function App() {
   // Handlers for photos
   const handleSavePhoto = async (
     scheduleId: string,
-    photoIndex: 0 | 1,
+    photoIndex: number,
     imageUrl: string,
     caption?: string
   ) => {
@@ -191,7 +216,7 @@ export default function App() {
     showToast('✨ 사진이 앨범에 저장되었습니다!');
   };
 
-  const handleRemovePhoto = async (scheduleId: string, photoIndex: 0 | 1) => {
+  const handleRemovePhoto = async (scheduleId: string, photoIndex: number) => {
     await removeUserPhoto(scheduleId, photoIndex);
     setUserPhotos((prev) => {
       const copy = { ...prev };
@@ -236,8 +261,11 @@ export default function App() {
   }
 
   return (
-    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#FFFDF9] text-stone-800 flex flex-col font-dodum selection:bg-amber-200">
-      {/* Top Navigation Bar with 3 requested page tabs & BGM controls */}
+    <div className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#FAF9F6] text-stone-900 flex flex-col font-dodum selection:bg-stone-200 relative">
+      {/* Background Falling Petals Effect */}
+      <FallingPetals enabled={petalsEnabled} />
+
+      {/* Top Editorial Navigation Bar */}
       <NavigationHeader
         currentPage={currentPage}
         onPageChange={(p) => setCurrentPage(p)}
@@ -250,16 +278,20 @@ export default function App() {
         currentTrackId={currentTrackId}
         onSelectTrack={handleSelectTrack}
         tracks={PIANO_TRACKS}
+        scheduleCount={SCHEDULES.length}
+        petalsEnabled={petalsEnabled}
+        onTogglePetals={() => setPetalsEnabled((prev) => !prev)}
       />
 
-      {/* Main Content Render (Pages 1, 2, or 3) - Single Screen Fit */}
-      <div className="flex-1 min-h-0 overflow-hidden relative">
+      {/* Main Content (Pages 1, 2, or 3) - Single Screen Fit */}
+      <div className="flex-1 min-h-0 overflow-hidden relative z-20">
         {currentPage === 1 && (
           <CoverPage
             coverImage={coverImage}
             onCoverImageChange={handleCoverImageChange}
-            onNavigateToAlbum={() => setCurrentPage(2)}
-            onStartBgmIfNeeded={handleStartBgmIfNeeded}
+            onOpenAlbum={() => setCurrentPage(2)}
+            audioPlaying={isPlayingBgm}
+            onToggleAudio={handleToggleBgm}
           />
         )}
 
@@ -286,18 +318,27 @@ export default function App() {
         )}
       </div>
 
-      {/* Batch Upload Modal */}
+      {/* Batch Upload & Vercel Bundle Modal */}
       {showBatchUpload && (
         <BatchUploadModal
           schedules={SCHEDULES}
           onClose={() => setShowBatchUpload(false)}
           onSavePhoto={handleSavePhoto}
+          coverPhoto={coverImage}
+          userPhotos={userPhotos}
+          guestNotes={guestNotes}
+          onImportSuccess={(bundle) => {
+            if (bundle.coverPhoto) setCoverImage(bundle.coverPhoto);
+            if (bundle.photos) setUserPhotos(bundle.photos);
+            if (bundle.guestNotes) setGuestNotes(bundle.guestNotes);
+            showToast('✨ 앨범 데이터가 성공적으로 불러와졌습니다!');
+          }}
         />
       )}
 
-      {/* Toast alert */}
+      {/* Notification Toast */}
       {toastMessage && (
-        <div className="fixed top-14 right-4 z-50 bg-stone-900 text-white font-jua text-xs sm:text-sm px-4 py-2 rounded-2xl shadow-2xl border border-amber-400/40 animate-fade-in flex items-center gap-2">
+        <div className="fixed top-14 right-4 z-50 bg-stone-900 text-white font-serif-kr text-xs sm:text-sm px-4 py-2 rounded-xl shadow-xl border border-stone-700 animate-fade-in flex items-center gap-2">
           <span>{toastMessage}</span>
         </div>
       )}
