@@ -1,0 +1,6 @@
+{
+  "name": "온정초 도시문화체험 추억 앨범",
+  "description": "온정초등학교 1박 2일 도시문화체험학습(경주·부산·울산)의 소중한 순간들을 담은 인터랙티브 수학여행 추억 앨범",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
