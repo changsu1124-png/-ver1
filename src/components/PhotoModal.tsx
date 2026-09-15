@@ -66,10 +66,10 @@ export function PhotoModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-jua px-2 py-0.5 rounded-md bg-stone-200 text-stone-800">
-                {schedule.day}일차 · #{schedule.order}
+                {schedule.day === 3 ? '개인 앨범' : `${schedule.day}일차 · #${schedule.order}`}
               </span>
               <span className="text-xs text-stone-500 font-dodum">
-                사진 {photoIndex + 1} / {totalPhotosInSchedule}
+                {schedule.day === 3 ? `${schedule.title} (${photoIndex + 1}/${totalPhotosInSchedule})` : `사진 ${photoIndex + 1} / ${totalPhotosInSchedule}`}
               </span>
             </div>
             <h3 className="font-jua text-base sm:text-xl text-stone-900 mt-1">

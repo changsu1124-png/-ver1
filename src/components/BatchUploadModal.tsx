@@ -267,7 +267,7 @@ export function BatchUploadModal({
                   >
                     {schedules.map((s, idx) => (
                       <option key={s.id} value={s.id}>
-                        {s.day}일차 #{idx + 1}. {s.title}
+                        {s.day === 3 ? `[개인 앨범] ${s.title}` : `${s.day}일차 #${s.order}. ${s.title}`}
                       </option>
                     ))}
                   </select>

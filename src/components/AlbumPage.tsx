@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ScheduleItem } from '../types';
 import { PhotoModal } from './PhotoModal';
+import { EditorialPhotoCard } from './EditorialPhotoCard';
 import { optimizeImage } from '../utils/imageOptimizer';
 
 interface AlbumPageProps {
@@ -42,7 +43,7 @@ export function AlbumPage({
   const [currentIndex, setCurrentIndex] = useState(0);
   // Current sub-page inside the active schedule (0 to pageCount - 1)
   const [currentPageInSchedule, setCurrentPageInSchedule] = useState(0);
-  const [selectedDayFilter, setSelectedDayFilter] = useState<0 | 1 | 2>(0);
+  const [selectedDayFilter, setSelectedDayFilter] = useState<0 | 1 | 2 | 3>(0);
   const [viewMode, setViewMode] = useState<'book' | 'grid'>('book');
 
   // Active modal for enlarging photo
@@ -183,6 +184,21 @@ export function AlbumPage({
           >
             2일차 ({schedules.filter((s) => s.day === 2).length})
           </button>
+          <button
+            onClick={() => {
+              setSelectedDayFilter(3);
+              const firstDay3Index = schedules.findIndex((s) => s.day === 3);
+              if (firstDay3Index !== -1) setCurrentIndex(firstDay3Index);
+              setCurrentPageInSchedule(0);
+            }}
+            className={`px-2.5 py-0.5 rounded-full text-xs font-serif-kr transition-all cursor-pointer ${
+              selectedDayFilter === 3
+                ? 'bg-stone-900 text-white font-medium shadow-xs'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            개인 앨범 ({schedules.filter((s) => s.day === 3).length})
+          </button>
         </div>
 
         {/* Global Page Indicator (Editorial Magazine Style) */}
@@ -242,13 +258,18 @@ export function AlbumPage({
           <div className="shrink-0 flex items-center justify-between gap-3 pb-2.5 border-b border-stone-200">
             <div className="min-w-0 flex items-center gap-2 sm:gap-2.5 flex-wrap">
               <span className="text-xs font-jua px-2.5 py-1 rounded-md bg-stone-900 text-white shadow-2xs shrink-0">
-                {currentSchedule.day}일차 #{currentSchedule.order}
+                {currentSchedule.day === 3 ? '개인 앨범' : `${currentSchedule.day}일차 #${currentSchedule.order}`}
               </span>
               <h2 className="font-jua text-lg sm:text-2xl text-stone-900 tracking-tight truncate">
                 {currentSchedule.title}
               </h2>
 
               <div className="flex items-center gap-1.5 flex-wrap">
+                {currentSchedule.grade && (
+                  <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-dodum font-bold text-stone-900 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-md shadow-2xs">
+                    <span className="highlighter-pen-yellow">온정초 {currentSchedule.grade}학년</span>
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-dodum font-bold text-stone-900 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md shadow-2xs">
                   <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                   <span className="highlighter-pen-yellow">{currentSchedule.time}</span>
@@ -263,7 +284,7 @@ export function AlbumPage({
             {/* Sub-page Selector Pills */}
             <div className="shrink-0 flex items-center gap-1 bg-stone-100 p-1 rounded-lg border border-stone-300">
               <span className="text-xs font-dodum font-bold text-stone-700 px-1.5 hidden md:inline">
-                총 {pageCount}페이지 (사진 {currentSchedule.defaultPhotos.length}장)
+                {currentSchedule.day === 3 ? '개인 사진 2컷' : `총 ${pageCount}페이지 (사진 ${currentSchedule.defaultPhotos.length}장)`}
               </span>
               {Array.from({ length: pageCount }, (_, pIdx) => {
                 const isCurrent = pIdx === currentPageInSchedule;
@@ -279,147 +300,79 @@ export function AlbumPage({
                         : 'text-stone-700 hover:text-black hover:bg-stone-200'
                     }`}
                   >
-                    {pageCount === 1 ? '1페이지 (1·2)' : `${pIdx + 1}장 (${photoA + 1}·${photoB + 1})`}
+                    {pageCount === 1 ? '사진 1 · 2' : `${pIdx + 1}장 (${photoA + 1}·${photoB + 1})`}
                   </button>
                 );
               })}
             </div>
           </div>
 
+          {/* Quick Student Selector Bar for 개인 앨범 */}
+          {(currentSchedule.day === 3 || selectedDayFilter === 3) && (
+            <div className="shrink-0 py-1.5 px-2.5 bg-stone-50/90 rounded-xl border border-stone-200 my-1 flex items-center gap-2 overflow-x-auto">
+              <span className="text-[11px] font-jua text-stone-600 shrink-0 flex items-center gap-1">
+                <span>학생 선택</span>
+                <span className="text-[10px] text-stone-400">({schedules.filter((s) => s.day === 3).length}명)</span>:
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                {schedules
+                  .filter((s) => s.day === 3)
+                  .map((student) => {
+                    const isSelected = student.id === currentSchedule.id;
+                    return (
+                      <button
+                        key={student.id}
+                        onClick={() => {
+                          const idx = schedules.findIndex((s) => s.id === student.id);
+                          if (idx !== -1) {
+                            setCurrentIndex(idx);
+                            setCurrentPageInSchedule(0);
+                          }
+                        }}
+                        className={`px-2 py-0.5 rounded-md text-xs font-serif-kr transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-stone-900 text-white font-bold shadow-xs scale-105'
+                            : 'bg-white text-stone-700 hover:bg-stone-200 border border-stone-200'
+                        }`}
+                      >
+                        <span className="text-[10px] text-stone-400 font-normal">{student.grade}학년</span>
+                        <span>{student.studentName || student.title}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* 2 Big Editorial Photos of the current page */}
           <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 py-2 items-stretch">
-            {[slotIndex1, slotIndex2].map((slotIdx, relativeIdx) => {
+            {[slotIndex1, slotIndex2].map((slotIdx) => {
               const { url, caption, isCustom } = getPhotoData(currentSchedule, slotIdx);
               const isEditingCaption = editingCaptionSlot === `${currentSchedule.id}_${slotIdx}`;
 
               return (
-                <div
-                  key={slotIdx}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) handleSinglePhotoUpload(currentSchedule.id, slotIdx, file);
+                <EditorialPhotoCard
+                  key={`${currentSchedule.id}_${slotIdx}`}
+                  slotIdx={slotIdx}
+                  scheduleId={currentSchedule.id}
+                  url={url}
+                  caption={caption}
+                  isCustom={isCustom}
+                  isEditingCaption={isEditingCaption}
+                  tempCaption={tempCaption}
+                  onSetTempCaption={setTempCaption}
+                  onStartEditCaption={() => {
+                    setTempCaption(caption);
+                    setEditingCaptionSlot(`${currentSchedule.id}_${slotIdx}`);
                   }}
-                  className="relative h-full max-h-full bg-white p-2.5 sm:p-3 rounded-xl border border-stone-200 editorial-photo-card flex flex-col justify-between group hover:border-stone-400 transition-all min-h-0 overflow-hidden"
-                >
-                  {/* Fine Editorial Corner Tag */}
-                  <div className="absolute top-2.5 left-3.5 z-10 px-2 py-0.5 bg-stone-900/80 text-white rounded-md text-[10px] font-serif-en tracking-widest uppercase pointer-events-none">
-                    NO. 0{slotIdx + 1}
-                  </div>
-
-                  {/* Custom Photo Indicator */}
-                  {isCustom && (
-                    <div className="absolute top-2.5 right-3.5 z-10 bg-white/95 text-stone-800 text-[10px] font-serif-kr px-2 py-0.5 rounded-md shadow-xs border border-stone-200 flex items-center gap-1">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                      직접 등록
-                    </div>
-                  )}
-
-                  {/* Photo Container */}
-                  <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-stone-50 border border-stone-100 group/img my-1">
-                    <img
-                      src={url}
-                      alt={caption}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover/img:scale-102 transition-transform duration-500"
-                    />
-
-                    {/* Hover Action Overlay */}
-                    <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
-                      <button
-                        onClick={() => setModalData({ schedule: currentSchedule, photoIndex: slotIdx })}
-                        className="px-3.5 py-1.5 bg-white/95 hover:bg-white text-stone-900 rounded-lg shadow text-xs font-serif-kr flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="크게 보기"
-                      >
-                        <Maximize2 className="w-3.5 h-3.5" />
-                        <span>확대 보기</span>
-                      </button>
-
-                      <label className="px-3.5 py-1.5 bg-stone-900 hover:bg-black text-white rounded-lg shadow text-xs font-serif-kr flex items-center gap-1.5 transition-colors cursor-pointer">
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>사진 교체</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleSinglePhotoUpload(currentSchedule.id, slotIdx, file);
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Editorial Caption Bar */}
-                  <div className="shrink-0 pt-1.5 flex items-center justify-between gap-2 text-xs border-t border-stone-100">
-                    {isEditingCaption ? (
-                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <input
-                          type="text"
-                          value={tempCaption}
-                          onChange={(e) => setTempCaption(e.target.value)}
-                          placeholder="사진 캡션 입력"
-                          className="flex-1 px-2.5 py-1 text-xs bg-stone-50 border border-stone-300 rounded-md focus:outline-none focus:ring-1 focus:ring-stone-500 font-serif-kr text-stone-900"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => {
-                            onSavePhoto(currentSchedule.id, slotIdx, url, tempCaption);
-                            setEditingCaptionSlot(null);
-                          }}
-                          className="px-2.5 py-1 bg-stone-900 hover:bg-black text-white text-xs font-serif-kr rounded-md cursor-pointer"
-                        >
-                          <Check className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <p className="font-gaegu text-base sm:text-lg font-bold text-stone-900 leading-snug truncate">
-                          <span className="highlighter-pen-yellow">&ldquo;{caption}&rdquo;</span>
-                        </p>
-                        <button
-                          onClick={() => {
-                            setTempCaption(caption);
-                            setEditingCaptionSlot(`${currentSchedule.id}_${slotIdx}`);
-                          }}
-                          className="text-stone-400 hover:text-stone-900 p-0.5 transition-colors shrink-0 cursor-pointer"
-                          title="캡션 수정"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Right: Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label className="text-stone-600 hover:text-stone-900 cursor-pointer flex items-center gap-1 font-serif-kr bg-stone-50 hover:bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200 transition-colors text-xs">
-                        <Camera className="w-3 h-3 text-stone-500" />
-                        <span className="hidden sm:inline">교체</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleSinglePhotoUpload(currentSchedule.id, slotIdx, file);
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-
-                      {isCustom && (
-                        <button
-                          onClick={() => onRemovePhoto(currentSchedule.id, slotIdx)}
-                          className="text-stone-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
-                          title="기본 사진으로 복원"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  onSaveCaption={(newCaption) => {
+                    onSavePhoto(currentSchedule.id, slotIdx, url, newCaption);
+                    setEditingCaptionSlot(null);
+                  }}
+                  onSinglePhotoUpload={(file) => handleSinglePhotoUpload(currentSchedule.id, slotIdx, file)}
+                  onRemovePhoto={() => onRemovePhoto(currentSchedule.id, slotIdx)}
+                  onEnlarge={() => setModalData({ schedule: currentSchedule, photoIndex: slotIdx })}
+                />
               );
             })}
           </div>
@@ -439,7 +392,7 @@ export function AlbumPage({
               </span>
             </button>
 
-            {/* Schedules Timeline (10 Schedules) */}
+            {/* Schedules Timeline */}
             <div className="hidden md:flex items-center gap-1.5 overflow-x-auto max-w-lg px-2.5 py-1 bg-stone-50 rounded-xl border border-stone-200">
               {schedules.map((s, idx) => {
                 const isCurrent = idx === currentIndex;
@@ -452,7 +405,7 @@ export function AlbumPage({
                       setCurrentIndex(idx);
                       setCurrentPageInSchedule(0);
                     }}
-                    title={`${s.day}일차 ${s.title} (${s.pageCount}페이지)`}
+                    title={`${s.day === 3 ? '개인 앨범' : `${s.day}일차`} ${s.title} (${s.pageCount}페이지)`}
                     className={`h-5 min-w-[20px] px-1.5 rounded-md text-[10px] font-serif-kr flex items-center justify-center gap-0.5 transition-all cursor-pointer ${
                       isCurrent
                         ? 'bg-stone-900 text-white font-semibold shadow-xs scale-105'
@@ -461,8 +414,8 @@ export function AlbumPage({
                         : 'bg-white text-stone-600 hover:bg-stone-200 border border-stone-200'
                     }`}
                   >
-                    <span>{idx + 1}</span>
-                    {s.pageCount !== 2 && (
+                    <span>{s.day === 3 ? (s.studentName || s.title) : idx + 1}</span>
+                    {s.day !== 3 && s.pageCount !== 2 && (
                       <span className="text-[8px] opacity-75">({s.defaultPhotos.length})</span>
                     )}
                   </button>
@@ -499,10 +452,10 @@ export function AlbumPage({
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span className="text-xs font-jua px-2 py-0.5 rounded-md bg-stone-900 text-white">
-                        {schedule.day}일차 #{schedule.order}
+                        {schedule.day === 3 ? '개인 앨범' : `${schedule.day}일차 #${schedule.order}`}
                       </span>
                       <span className="text-[11px] font-dodum font-bold text-stone-600">
-                        {schedule.pageCount}페이지 ({schedule.defaultPhotos.length}장)
+                        {schedule.day === 3 ? `${schedule.grade}학년 · 사진 2장` : `${schedule.pageCount}페이지 (${schedule.defaultPhotos.length}장)`}
                       </span>
                     </div>
                     <h3 className="font-jua text-base text-stone-900 leading-snug">
@@ -560,7 +513,7 @@ export function AlbumPage({
                     }}
                     className="w-full py-1.5 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-serif-kr rounded-lg border border-stone-200 transition-colors cursor-pointer"
                   >
-                    이 일정 에디토리얼 펼치기
+                    {schedule.day === 3 ? '개인 앨범 펼치기' : '이 일정 에디토리얼 펼치기'}
                   </button>
                 </div>
               );
